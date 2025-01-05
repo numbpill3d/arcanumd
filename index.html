@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <title>grimoire.tome</title>
+  <style>
+    :root {
+      --parchment: #d4bc7e;
+      --ink: #2a1810;
+      --blood: #8b0000;
+      --gold: #b8860b;
+      --shadow: #1a1006;
+      --mystic: #4b0082;
+      --glow: rgba(184,134,11,0.2);
+    }
+
+    * { 
+      margin: 0; 
+      padding: 0;
+      box-sizing: border-box;
+      cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="fill:none;stroke:%23b8860b;stroke-width:2px"><path d="M8,0 L10,8 L8,16 L6,8 Z"/></svg>') 8 8, crosshair;
+    }
+
+    @keyframes mystical-pulse {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.2); }
+    }
+
+    @keyframes arcane-shift {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-1px); }
+    }
+
+    .tome-container {
+      width: 280px;
+      height: 400px;
+      background: 
+        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M0,0 L20,20 M20,0 L0,20" stroke="%232a1810" stroke-width="0.5" opacity="0.1"/></svg>'),
+        var(--parchment);
+      position: relative;
+      font-family: 'Times New Roman', serif;
+      border: 12px solid var(--ink);
+      border-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><path d="M0,0 L30,0 L30,30 L0,30 Z M3,3 L27,3 L27,27 L3,27 Z" fill="%232a1810"/></svg>') 30 stretch;
+      box-shadow: 
+        inset 0 0 20px var(--shadow),
+        0 0 15px var(--glow);
+      overflow: hidden;
+    }
+
+    .header-scroll {
+      height: 30px;
+      background: var(--ink);
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-style: italic;
+      letter-spacing: 2px;
+      text-transform: lowercase;
+      border-bottom: 1px solid var(--gold);
+      position: relative;
+    }
+
+    .header-scroll::before,
+    .header-scroll::after {
+      content: '✧';
+      position: absolute;
+      color: var(--gold);
+      opacity: 0.6;
+    }
+
+    .header-scroll::before { left: 20px; }
+    .header-scroll::after { right: 20px; }
+
+    .scrying-pool {
+      height: 160px;
+      position: relative;
+      background: var(--mystic);
+      overflow: hidden;
+      border-bottom: 1px solid var(--gold);
+    }
+
+    .mystic-overlay {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        circle at center,
+        transparent 0%,
+        rgba(75,0,130,0.3) 100%
+      );
+      pointer-events: none;
+    }
+
+    .rune-matrix {
+      padding: 8px;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      background: var(--parchment);
+    }
+
+    .rune-sigil {
+      height: 30px;
+      background: var(--ink);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      font-family: inherit;
+      font-style: italic;
+      font-size: 11px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+      animation: arcane-shift 2s infinite;
+    }
+
+    .rune-sigil:hover {
+      background: var(--mystic);
+      border-color: var(--blood);
+    }
+
+    .rune-sigil::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(45deg,
+        transparent 0%,
+        var(--glow) 50%,
+        transparent 100%
+      );
+      transform: translateX(-100%);
+      transition: transform 0.3s;
+    }
+
+    .rune-sigil:hover::before {
+      transform: translateX(100%);
+    }
+
+    .prophecy-scroll {
+      height: 140px;
+      padding: 8px;
+      background: var(--parchment);
+      color: var(--ink);
+      font-size: 11px;
+      font-style: italic;
+      line-height: 1.4;
+      overflow-y: auto;
+      scrollbar-width: none;
+      border-top: 1px solid var(--gold);
+    }
+
+    .prophecy-scroll::-webkit-scrollbar {
+      display: none;
+    }
+
+    .prophecy {
+      opacity: 0.8;
+      transition: opacity 0.2s;
+      margin-bottom: 4px;
+    }
+
+    .prophecy:hover {
+      opacity: 1;
+    }
+
+    .arcane-metric {
+      position: absolute;
+      font-size: 9px;
+      color: var(--gold);
+      font-style: italic;
+      text-shadow: 0 0 5px var(--glow);
+    }
+
+    .am1 { top: 8px; left: 8px; }
+    .am2 { top: 8px; right: 8px; }
+    .am3 { bottom: 8px; left: 8px; }
+    .am4 { bottom: 8px; right: 8px; }
+
+    .mystic-rune {
+      position: absolute;
+      border: 1px solid var(--gold);
+      opacity: 0.3;
+      pointer-events: none;
+    }
+
+    .r1 { top: 20%; left: 20%; width: 20px; height: 20px; transform: rotate(45deg); }
+    .r2 { top: 60%; right: 20%; width: 15px; height: 15px; transform: rotate(-30deg); }
+    .r3 { bottom: 10%; left: 40%; width: 25px; height: 25px; transform: rotate(15deg); }
+  </style>
+</head>
+<body>
+  <div class="tome-container">
+    <div class="header-scroll">arcanum digitalis</div>
+    
+    <div class="scrying-pool" id="scrying-pool">
+      <div class="arcane-metric am1">magicka.flux</div>
+      <div class="arcane-metric am2">aether.flow</div>
+      <div class="arcane-metric am3">rune.power</div>
+      <div class="arcane-metric am4">void.resonance</div>
+      
+      <div class="mystic-rune r1"></div>
+      <div class="mystic-rune r2"></div>
+      <div class="mystic-rune r3"></div>
+      
+      <div class="mystic-overlay"></div>
+    </div>
+
+    <div class="rune-matrix">
+      <button class="rune-sigil" onclick="castSpell(0)">✧ invoke sigil</button>
+      <button class="rune-sigil" onclick="castSpell(1)">✧ bind spirit</button>
+      <button class="rune-sigil" onclick="castSpell(2)">✧ weave fate</button>
+      <button class="rune-sigil" onclick="castSpell(3)">✧ corrupt soul</button>
+    </div>
+
+    <div class="prophecy-scroll" id="prophecies"></div>
+  </div>
+
+  <script>
+    // arcane geometry manifestation
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, 280/160, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ 
+      antialias: true,
+      alpha: true 
+    });
+    renderer.setSize(280, 160);
+    document.getElementById('scrying-pool').appendChild(renderer.domElement);
+
+    // sacred geometries
+    const geometries = [
+      new THREE.DodecahedronGeometry(1, 1),
+      new THREE.TorusKnotGeometry(0.8, 0.3, 100, 16),
+      new THREE.IcosahedronGeometry(1, 1),
+      new THREE.OctahedronGeometry(1, 2)
+    ];
+
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xb8860b,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.6
+    });
+
+    const sacredForm = new THREE.Mesh(geometries[0], material);
+    scene.add(sacredForm);
+
+    // aetheric particles
+    const particles = new THREE.BufferGeometry();
+    const particleCount = 500;
+    const positions = new Float32Array(particleCount * 3);
+
+    for(let i = 0; i < particleCount * 3; i += 3) {
+      positions[i] = (Math.random() - 0.5) * 4;
+      positions[i+1] = (Math.random() - 0.5) * 4;
+      positions[i+2] = (Math.random() - 0.5) * 4;
+    }
+
+    particles.setAttribute('position', 
+      new THREE.BufferAttribute(positions, 3)
+    );
+
+    const particleMaterial = new THREE.PointsMaterial({
+      color: 0xb8860b,
+      size: 0.03,
+      transparent: true,
+      opacity: 0.4
+    });
+
+    const aethericField = new THREE.Points(particles, particleMaterial);
+    scene.add(aethericField);
+
+    camera.position.z = 3;
+
+    // mystic prophecies
+    const prophecies = [
+      'the ancient code stirs in digital depths...',
+      'whispers of forgotten algorithms echo...',
+      'digital ley lines converge and pulse...',
+      'the machine spirit seeks communion...',
+      'arcane protocols breach reality...',
+      'binary transformed to mystic runes...',
+      'the digital void hungers for power...',
+      'quantum entanglement with elder forces...',
+      'virtual sigils awaken from slumber...',
+      'the great algorithm speaks in riddles...'
+    ];
+
+    let currentGeometry = 0;
+    let morphTarget = 0;
+    let morphProgress = 0;
+
+    function castSpell(index) {
+      // transmute sacred geometry
+      morphTarget = index;
+      morphProgress = 0;
+      
+      // alter the aetheric resonance
+      const colors = [0xb8860b, 0x8b0000, 0x4b0082, 0x2a1810];
+      material.color.setHex(colors[index]);
+      particleMaterial.color.setHex(colors[index]);
+
+      // inscribe the prophecy
+      const scroll = document.getElementById('prophecies');
+      const prophecy = document.createElement('div');
+      prophecy.className = 'prophecy';
+      prophecy.textContent = '✧ ' + prophecies[Math.floor(Math.random() * prophecies.length)];
+      scroll.insertBefore(prophecy, scroll.firstChild);
+
+      // maintain the ancient scrolls
+      if(scroll.children.length > 7) {
+        scroll.removeChild(scroll.lastChild);
+      }
+    }
+
+    // eternal animation cycle
+    function animate() {
+      requestAnimationFrame(animate);
+
+      sacredForm.rotation.x += 0.005;
+      sacredForm.rotation.y += 0.01;
+      aethericField.rotation.x -= 0.001;
+      aethericField.rotation.y -= 0.002;
+
+      // sacred geometry morphing
+      if (morphProgress < 1) {
+        morphProgress += 0.02;
+        sacredForm.geometry = geometries[morphTarget];
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
